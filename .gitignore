@@ -1,0 +1,7 @@
+*.ii
+*.gpu
+*.ptx
+*.cubin
+*.fatbin
+*.o
+build/
