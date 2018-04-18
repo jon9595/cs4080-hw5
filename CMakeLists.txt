@@ -1,6 +1,15 @@
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(hw5 LANGUAGES CXX CUDA)
+cmake_minimum_required(VERSION 3.5)
+set(PROJ_NAME homework_5)
+file(GLOB SOURCES *.cpp *.hpp *.h *.cu)
 
-# add_library() <<< insert the libraries to use here pls
+project(${PROJ_NAME})
 
-# waiting on the right way to compile .h with nvcc
+find_package(CUDA)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_35)
+set(CMAKE_CXX_STANDARD 11)
+
+include_directories(/usr/local/cuda-9.1/targets/x86_64-linux/include)
+include_directories(lib)
+
+cuda_add_executable(${PROJ_NAME} ${SOURCES})
+

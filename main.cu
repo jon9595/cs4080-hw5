@@ -1,8 +1,13 @@
+#include <stdio.h>
+
+#include "cuda_runtime.h"
+#include "lib/helper_image.h"
+
 int main() {
 	unsigned int w, h;
 	unsigned char* pixels = NULL;
 
-	if (sdkLoadPGM<unsigned char>("lena.pgm", &pixels, &w, &h) != true)
+	if (sdkLoadPGM<unsigned char>("../lena.pgm", &pixels, &w, &h) != true)
 	{
 	  std::cout << "Unable to load PGM image file" << std::endl;
 	  return 1;
@@ -14,7 +19,7 @@ int main() {
 	  //pixels[i] = 0;
 	}
 
-	if (sdkSavePGM<unsigned char>("lena2.pgm", pixels, w, h) != true)
+	if (sdkSavePGM<unsigned char>("../lena2.pgm", pixels, w, h) != true)
 	{
 	  std::cout << "Unable to save PGM image file" << std::endl;
 	  return 1;
