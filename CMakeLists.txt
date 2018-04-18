@@ -7,6 +7,7 @@ project(${PROJ_NAME})
 find_package(CUDA)
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_35)
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "-g -std=c++11")
 
 include_directories(/usr/local/cuda-9.1/targets/x86_64-linux/include)
 include_directories(lib)
