@@ -30,19 +30,19 @@ int main(int argc, char** argv) {
 
     std::cout << "Successfully loaded PGM image file" << std::endl;
 
-        // First, create a 3x3 filter
-	for (int i = 0; i < 512; i++) {
-        for (int j = 0; j < 512; j++) {
-            if (i > 0 && j > 0 && i < 511 & j < 511) {
+// First, create a 3x3 filter
+	for (int i = 0; i < w; i++) {
+        for (int j = 0; j < w; j++) {
+            if (i > 0 && j > 0 && i < (w - 1) & j < (h - 1)) {
                 std::vector<unsigned char> v;
 
                 // Index of current pixel
-                int k = i * 512 + j;
+                int k = i * w + j;
 
                 // Top row of neighborhood
-                v.push_back(pixels[k - 513]);
-                v.push_back(pixels[k - 512]);
-                v.push_back(pixels[k - 511]);
+                v.push_back(pixels[k - (w - 1)]);
+                v.push_back(pixels[k - (w)]);
+                v.push_back(pixels[k - (w + 1))]);
 
                 // Middle row of neighborhood
                 v.push_back(pixels[k - 1]);
@@ -50,9 +50,9 @@ int main(int argc, char** argv) {
                 v.push_back(pixels[k + 1]);
 
                 // Bottom row of neighborhood
-                v.push_back(pixels[k + 511]);
-                v.push_back(pixels[k + 512]);
-                v.push_back(pixels[k + 513]);
+                v.push_back(pixels[k + (w - 1)]);
+                v.push_back(pixels[k + (w)]);
+                v.push_back(pixels[k + (w + 1)]);
 
                 std::sort(v.begin(), v.end());
 
