@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
                     if (filterCol != 0) {
                         int filterIndexTopRight = pixelsIndex - (w * filterRow) + filterCol;
 
-                        // Check that index doesn't overflow right or top edge or filter
+                        // Check that index doesn't overflow right or top edge
                         if ((filterIndexTopRight <= (((row + 1) * w) - 1)) && filterIndexTopRight >= 0 && filterIndexTopRight > (pixelsIndex - (w * filterRow))) {
                             values.push_back(pixels[filterIndexTopRight]);
                         }
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
                             int filterIndexBottomRight = pixelsIndex + (w * filterRow) + filterCol;
 
                             // Check that index doesn't overflow right or bottom edge
-                            if ((filterIndexBottomRight > (((row + 1) * w) - 1)) && filterIndexBottomRight < w * h) {
+                            if (filterIndexBottomRight <= ((row + filterRow + 1) * w - 1) && filterIndexBottomRight < (w * h)) {
                                 values.push_back(pixels[filterIndexBottomRight]);
                             }
                         }
