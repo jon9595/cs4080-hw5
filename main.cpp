@@ -52,8 +52,8 @@ int main(int argc, char** argv) {
                     if (filterCol != 0) {
                         int filterIndexTopRight = pixelsIndex - (w * filterRow) + filterCol;
 
-                        // Check that index doesn't overflow right or top edge
-                        if ((filterIndexTopRight <= (((row + 1) * w) - 1)) && filterIndexTopRight >= 0) {
+                        // Check that index doesn't overflow right or top edge or filter
+                        if ((filterIndexTopRight <= (((row + 1) * w) - 1)) && filterIndexTopRight >= 0 && filterIndexTopRight > (pixelsIndex - (w * filterRow))) {
                             values.push_back(pixels[filterIndexTopRight]);
                         }
                     }
@@ -83,6 +83,9 @@ int main(int argc, char** argv) {
             std::sort(values.begin(), values.end());
 
             int size = values.size();
+
+            std::cout << "row " << row << "\tcol " << col << "\tsize " << size << std::endl;
+
             pixels[pixelsIndex] = values[size / 2];
         }
     }
