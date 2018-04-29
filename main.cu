@@ -1,11 +1,9 @@
-
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-
 #include <stdio.h>
+#include <string>
 
-#include "kernel.h"
-#include "inc/helper_image.h"
+#include "main.h"
+#include "lib/helper_image.h"
+#include "cuda_runtime.h"
 
 int main(int argc, char** argv)
 {
