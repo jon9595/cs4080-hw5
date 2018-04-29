@@ -84,8 +84,6 @@ int main(int argc, char** argv) {
 
             int size = values.size();
 
-            std::cout << "row " << row << "\tcol " << col << "\tsize " << size << std::endl;
-
             pixels[pixelsIndex] = values[size / 2];
         }
     }
