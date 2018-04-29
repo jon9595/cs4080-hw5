@@ -57,10 +57,10 @@ int main(int argc, char** argv)
 	cudaFree(d_pixels);
 
 	// Generate golden standard version with CPU
-	//processImageWithCPU(pixels, w, h, radius);
+	processImageWithCPU(pixels, w, h, radius);
 
 	// Save buffer to PGM image file
-	if (sdkSavePGM<unsigned char>(argv[3], h_pixels, w, h) != true)
+	if (sdkSavePGM<unsigned char>(argv[3], pixels, w, h) != true)
 	{
 		std::cerr << "Unable to save file " << argv[3] << std::endl;
 		exit(1);
