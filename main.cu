@@ -2,139 +2,167 @@
 #include <string>
 
 #include "main.h"
+#include "lib/helper_cuda.h"
+#include "lib/helper_functions.h"
 #include "lib/helper_image.h"
 #include "cuda_runtime.h"
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+    if (code != cudaSuccess) {
+        fprintf(stderr, "GPUassert:: %s %s %d\n", cudaGetErrorString(code), file, line);
+        if (abort) exit(code);
+    }
+}
 int main(int argc, char** argv)
 {
-	if (argc != 4)
-	{
-		std::cerr << "Usage ./homework5 <filter_size> <input_file> <output_file>" << std::endl;
-		exit(1);
-	}
+    if (argc != 4)
+    {
+        std::cerr << "Usage ./homework5 <filter_size> <input_file> <output_file>" << std::endl;
+        exit(1);
+    }
 
-	unsigned int filter_size = std::stoi(argv[1]);
-	unsigned int radius = filter_size / 2;
+    unsigned int filter_size = std::stoi(argv[1]);
+    unsigned int radius = filter_size / 2;
 
-	unsigned char* pixels = NULL;
-	unsigned int w, h;
+    unsigned char* pixels = NULL;
+    unsigned int w, h;
 
-	// Load input file into data buffer
-	if (sdkLoadPGM<unsigned char>(argv[2], &pixels, &w, &h) != true)
-	{
-		std::cerr << "Unable to load file " << argv[2] << std::endl;
-		return 1;
-	}
+    // Load input file into data buffer
+    if (sdkLoadPGM<unsigned char>(argv[2], &pixels, &w, &h) != true)
+    {
+        std::cerr << "Unable to load file " << argv[2] << std::endl;
+        return 1;
+    }
 
-	// Allocate vector in device memory
-	unsigned char* d_pixels;
-	size_t vectorSize = sizeof(unsigned char) * w * h;
-	cudaMalloc(&d_pixels, vectorSize);
+    size_t vectorSize = sizeof(unsigned char) * w * h;
 
-	// Allocate other data in device memory
-	unsigned int *d_w, *d_h, *d_radius;
-	size_t uintSize = sizeof(unsigned int);
-	cudaMalloc(&d_w, uintSize);
-	cudaMalloc(&d_h, uintSize);
-	cudaMalloc(&d_radius, uintSize);
+    // Allocate vector in device memory
+    unsigned char* d_pixels;
+    gpuErrchk(cudaMalloc((void**) &d_pixels, vectorSize));
 
-	// Copy data from host memory to device memory
-	cudaMemcpy(d_pixels, pixels, vectorSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_w, &w, uintSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_h, &h, uintSize, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_radius, &radius, uintSize, cudaMemcpyHostToDevice);
+    // Allocate other data in device memory
+    unsigned int *d_w, *d_h, *d_radius;
+    size_t uintSize = sizeof(unsigned int);
+    gpuErrchk(cudaMalloc(&d_w, uintSize));
+    gpuErrchk(cudaMalloc(&d_h, uintSize));
+    gpuErrchk(cudaMalloc(&d_radius, uintSize));
 
-	// Invoke kernel
-	int threadsPerBlock = 1024;
-	int blocksPerGrid = 256;
-	//processImageWithGPU<<<blocksPerGrid, threadsPerBlock>>>(d_pixels, d_w, d_h, d_radius);
+    // Copy data from host memory to device memory
+    gpuErrchk(cudaMemcpy(d_pixels, pixels, vectorSize, cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(d_w, &w, uintSize, cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(d_h, &h, uintSize, cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(d_radius, &radius, uintSize, cudaMemcpyHostToDevice));
 
-	// Copy result from device memory to host memory
-	unsigned char* h_pixels = (unsigned char*) malloc(vectorSize);
-	cudaMemcpy(d_pixels, h_pixels, vectorSize, cudaMemcpyDeviceToHost);
+    // Invoke kernel
+    int threadsPerBlock = 1024;
+    int blocksPerGrid = 256;
 
-	// Free device memory
-	cudaFree(d_pixels);
+    // Begin timing
+    cudaEvent_t start;
+    checkCudaErrors(cudaEventCreate(&start));
+    checkCudaErrors(cudaEventRecord(start, NULL));
+    processImageWithGPU<<<blocksPerGrid, threadsPerBlock>>>(d_pixels, d_w, d_h, d_radius);
+    gpuErrchk(cudaPeekAtLastError());
+    gpuErrchk(cudaDeviceSynchronize());
+    // Copy result from device memory to host memory
+    unsigned char* h_pixels = (unsigned char*) malloc(vectorSize);
+    gpuErrchk(cudaMemcpy(h_pixels, d_pixels, vectorSize, cudaMemcpyDeviceToHost));
 
-	// Generate golden standard version with CPU
-	processImageWithCPU(pixels, w, h, radius);
+    // Record end event
+    cudaEvent_t stop;
+    checkCudaErrors(cudaEventCreate(&stop));
+    checkCudaErrors(cudaEventRecord(stop, NULL));
+    checkCudaErrors(cudaEventSynchronize(stop));
 
-	// Save buffer to PGM image file
-	if (sdkSavePGM<unsigned char>(argv[3], pixels, w, h) != true)
-	{
-		std::cerr << "Unable to save file " << argv[3] << std::endl;
-		exit(1);
-	}
+    // Free device memory
+    cudaFree(d_pixels);
 
-	// Free host memory
-	free(h_pixels);
+    // Generate golden standard version with CPU
+    //processImageWithCPU(pixels, w, h, radius);
+
+    // Save buffer to PGM image file
+    if (sdkSavePGM<unsigned char>(argv[3], h_pixels, w, h) != true)
+    {
+        std::cerr << "Unable to save file " << argv[3] << std::endl;
+        exit(1);
+    }
+
+
+
+    // Free host memory
+    //free(h_pixels);
 
     return 0;
 }
 
 __global__ void processImageWithGPU(unsigned char* pixels, unsigned int* w, unsigned int* h, unsigned int* radius)
 {
-	//int i = blockIdx.x * blockDim.x + threadIdx.x;
-	//pixels[i] = 0;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = i / *w;
+    int col = i % *w;
+
+    //printf("%c", pixels[i]);
 }
 
 void processImageWithCPU(unsigned char* pixels, unsigned int w, unsigned int h, unsigned int radius)
 {
-	// Iterate through pixels
-	for (int row = 0; row < w; row++) {
-		for (int col = 0; col < h; col++) {
-			// Index of current pixel to be processed
-			int pixelIndex = row * w + col;
+    // Iterate through pixels
+    for (int row = 0; row < w; row++) {
+        for (int col = 0; col < h; col++) {
+            // Index of current pixel to be processed
+            int pixelIndex = row * w + col;
 
-			// Pixel values inside the filter
-			std::vector<unsigned char> values;
+            // Pixel values inside the filter
+            std::vector<unsigned char> values;
 
-			// Iterate through filter in quadrants
-			for (int filterRow = 0; filterRow <= radius; filterRow++) {
-				for (int filterCol = 0; filterCol <= radius; filterCol++) {
-					// Grab indices for top rows of filter (including middle row)
-					int filterIndexTopLeft = pixelIndex - (w * filterRow) - filterCol;
+            // Iterate through filter in quadrants
+            for (int filterRow = 0; filterRow <= radius; filterRow++) {
+                for (int filterCol = 0; filterCol <= radius; filterCol++) {
+                    // Grab indices for top rows of filter (including middle row)
+                    int filterIndexTopLeft = pixelIndex - (w * filterRow) - filterCol;
 
-					// Check that index doesn't overflow left or top edge
-					if ((filterIndexTopLeft >= ((row - filterRow) * w)) && (filterIndexTopLeft >= 0)) {
-						values.push_back(pixels[filterIndexTopLeft]);
-					}
+                    // Check that index doesn't overflow left or top edge
+                    if ((filterIndexTopLeft >= ((row - filterRow) * w)) && (filterIndexTopLeft >= 0)) {
+                        values.push_back(pixels[filterIndexTopLeft]);
+                    }
 
-					// Don't duplicate middle col of filter
-					if (filterCol != 0) {
-						int filterIndexTopRight = pixelIndex - (w * filterRow) + filterCol;
+                    // Don't duplicate middle col of filter
+                    if (filterCol != 0) {
+                        int filterIndexTopRight = pixelIndex - (w * filterRow) + filterCol;
 
-						// Check that index doesn't overflow right or top edge
-						if (filterIndexTopRight <= (((row - filterRow + 1) * w) - 1) && filterIndexTopRight > (pixelIndex - (w * filterRow)) && filterIndexTopRight >= 0) {
-							values.push_back(pixels[filterIndexTopRight]);
-						}
-					}
+                        // Check that index doesn't overflow right or top edge
+                        if (filterIndexTopRight <= (((row - filterRow + 1) * w) - 1) && filterIndexTopRight > (pixelIndex - (w * filterRow)) && filterIndexTopRight >= 0) {
+                            values.push_back(pixels[filterIndexTopRight]);
+                        }
+                    }
 
-					// Grab indices for bottom half of filter (excluding middle row)
-					if (filterRow != 0) {
-						int filterIndexBottomLeft = pixelIndex + (w * filterRow) - filterCol;
+                    // Grab indices for bottom half of filter (excluding middle row)
+                    if (filterRow != 0) {
+                        int filterIndexBottomLeft = pixelIndex + (w * filterRow) - filterCol;
 
-						// Check that index doesn't overflow left or bottom edge
-						if ((filterIndexBottomLeft >= ((row + filterRow) * w)) && (filterIndexBottomLeft < (w * h))) {
-							values.push_back(pixels[filterIndexBottomLeft]);
-						}
+                        // Check that index doesn't overflow left or bottom edge
+                        if ((filterIndexBottomLeft >= ((row + filterRow) * w)) && (filterIndexBottomLeft < (w * h))) {
+                            values.push_back(pixels[filterIndexBottomLeft]);
+                        }
 
-						// Don't duplicate middle col of filter
-						if (filterCol != 0) {
-							int filterIndexBottomRight = pixelIndex + (w * filterRow) + filterCol;
+                        // Don't duplicate middle col of filter
+                        if (filterCol != 0) {
+                            int filterIndexBottomRight = pixelIndex + (w * filterRow) + filterCol;
 
-							// Check that index doesn't overflow right or bottom edge
-							if (filterIndexBottomRight <= ((row + filterRow + 1) * w - 1) && filterIndexBottomRight < (w * h)) {
-								values.push_back(pixels[filterIndexBottomRight]);
-							}
-						}
-					}
-				}
-			}
+                            // Check that index doesn't overflow right or bottom edge
+                            if (filterIndexBottomRight <= ((row + filterRow + 1) * w - 1) && filterIndexBottomRight < (w * h)) {
+                                values.push_back(pixels[filterIndexBottomRight]);
+                            }
+                        }
+                    }
+                }
+            }
 
-			std::sort(values.begin(), values.end());
-			int size = (int) values.size();
-			pixels[pixelIndex] = values[size / 2];
-		}
-	}
+            std::sort(values.begin(), values.end());
+            int size = (int) values.size();
+            pixels[pixelIndex] = values[size / 2];
+        }
+    }
 }
