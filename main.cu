@@ -7,6 +7,7 @@
 #include "lib/helper_image.h"
 #include "cuda_runtime.h"
 
+// Assert macro to check for CUDA errors
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
@@ -102,8 +103,51 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned int* w, unsi
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int row = i / *w;
     int col = i % *w;
+    unsigned char values[150];
+    int idx = 0;
 
-    //printf("%c", pixels[i]);
+    if(row > *radius && col > *radius && (*h - row) > *radius && (*w - col) > *radius) {
+        // We are ignoring the edge cases in this if-statement, so process neighbor pixels
+        for(int filterRow = 0; filterRow <= *radius; filterRow++) {
+            for(int filterCol = 0; filterCol <= *radius; filterCol++) {
+                int filterIndexTopLeft = i - (*w * filterRow) - filterCol;
+                values[idx] = pixels[filterIndexTopLeft];
+                idx++;
+
+                if(filterCol != 0) {
+                    int filterIndexTopRight = i - (*w * filterRow) + filterCol;
+                    values[idx] = pixels[filterIndexTopRight];
+                    idx++;
+                }
+
+                if(filterRow != 0) {
+                    int filterIndexBottomLeft = i + (*w * filterRow) - filterCol;
+                    values[idx] = pixels[filterIndexBottomLeft];
+                    idx++;
+
+                    if(filterCol != 0) {
+                        int filterIndexBottomRight = i + (*w + filterRow) + filterCol;
+                        values[idx] = pixels[filterIndexBottomRight];
+                        idx++;
+                    }
+                }
+            }
+        }
+
+        // Sort the pixels
+        for(int j = 0; j < idx - 1; j++) {
+            for(int k = 0; k < idx - j - 1; k++) {
+                if(values[k] > values[k + 1]) {
+                    unsigned char temp = values[k];
+                    values[k] = values[k+1];
+                    values[k+1] = temp;
+                }
+            }
+        }
+
+        // Change the pixel to the median value
+        pixels[i] = values[idx/2];
+    }
 }
 
 void processImageWithCPU(unsigned char* pixels, unsigned int w, unsigned int h, unsigned int radius)
