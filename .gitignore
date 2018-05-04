@@ -5,3 +5,4 @@
 *.fatbin
 *.o
 build/
+out.pgm
