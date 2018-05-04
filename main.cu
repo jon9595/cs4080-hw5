@@ -182,7 +182,7 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned char* pixels
         }
 
         // Change the pixel to the median value
-        pixels_out[i] = values[idx/2];
+        pixels_out[i] = values[idx/2 + 1];
 
         if (row == 50 && col == 50)
         {
@@ -194,9 +194,13 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned char* pixels
             }
 
             printf("GPU: size: %d\n", idx);
-            printf("GPU: %d\n", pixels[i]);
+            printf("GPU: %d\n", values[idx / 2 + 1]);
         }
+
+        return;
     }
+
+    pixels_out[i] = pixels[i];
 }
 
 void processImageWithCPU(unsigned char* pixels, unsigned char* pixels_out, unsigned int w, unsigned int h, unsigned int radius)
@@ -255,7 +259,7 @@ void processImageWithCPU(unsigned char* pixels, unsigned char* pixels_out, unsig
 
             std::sort(values.begin(), values.end());
             int size = (int) values.size();
-            pixels_out[pixelIndex] = values[size / 2];
+            pixels_out[pixelIndex] = values[size / 2 + 1];
 
             if (row == 50 && col == 50)
             {
@@ -267,7 +271,7 @@ void processImageWithCPU(unsigned char* pixels, unsigned char* pixels_out, unsig
                 }
 
                 printf("CPU: size: %d\n", size);
-                printf("CPU: %d\n", pixels[pixelIndex]);
+                printf("CPU: %d\n", values[size / 2 + 1]);
             }
         }
     }
@@ -283,6 +287,10 @@ void compareOutput(unsigned char *cpuPixels, unsigned char *gpuPixels, int size)
         if (cpuPixels[i] == gpuPixels[i])
         {
             matchingPixels++;
+        }
+        else
+        {
+//            printf("compareOutput() mismatch: i == %d\n", i);
         }
     }
 
