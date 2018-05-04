@@ -120,6 +120,9 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    // Compare output from host vs device
+    compareOutput(pixels, h_pixels, (w * h));
+
     // Free host memory
     free(h_pixels);
 
@@ -237,4 +240,21 @@ void processImageWithCPU(unsigned char* pixels, unsigned int w, unsigned int h, 
             pixels[pixelIndex] = values[size / 2];
         }
     }
+}
+
+void compareOutput(unsigned char *cpuPixels, unsigned char *gpuPixels, int size)
+{
+    int matchingPixels = 0;
+    int totalPixels = size;
+
+    for (int i = 0; i < size; i++)
+    {
+        if (cpuPixels[i] == gpuPixels[i])
+        {
+            matchingPixels++;
+        }
+    }
+
+    double accuracy = ((double) matchingPixels / (double) totalPixels) * 100.0;
+    std::cout << "Accuracy: " << accuracy << std::endl;
 }
