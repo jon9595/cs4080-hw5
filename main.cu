@@ -15,7 +15,7 @@ inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort=t
     if (code != cudaSuccess) 
     {
         fprintf(stderr, "GPUassert:: %s %s %d\n", cudaGetErrorString(code), file, line);
-        
+
         if (abort) 
             exit(code);
     }
@@ -54,9 +54,11 @@ int main(int argc, char** argv)
 
     size_t vectorSize = sizeof(unsigned char) * w * h;
 
+    unsigned char* d_pixels_out;
+    gpuErrchk(cudaMalloc((void**) &d_pixels_out, vectorSize));
+
     // Allocate vector in device memory
     unsigned char* d_pixels;
-
     gpuErrchk(cudaMalloc((void**) &d_pixels, vectorSize));
 
     // Allocate other data in device memory
@@ -68,6 +70,7 @@ int main(int argc, char** argv)
 
     // Copy data from host memory to device memory
     gpuErrchk(cudaMemcpy(d_pixels, pixels, vectorSize, cudaMemcpyHostToDevice));
+    gpuErrchk(cudaMemcpy(d_pixels_out, pixels, vectorSize, cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(d_w, &w, uintSize, cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(d_h, &h, uintSize, cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(d_radius, &radius, uintSize, cudaMemcpyHostToDevice));
@@ -80,13 +83,13 @@ int main(int argc, char** argv)
     cudaEvent_t start;
     checkCudaErrors(cudaEventCreate(&start));
     checkCudaErrors(cudaEventRecord(start, NULL));
-    processImageWithGPU<<<blocksPerGrid,threadsPerBlock>>>(d_pixels, d_w, d_h, d_radius);
+    processImageWithGPU<<<blocksPerGrid,threadsPerBlock>>>(d_pixels, d_pixels_out, d_w, d_h, d_radius);
     gpuErrchk(cudaPeekAtLastError());
     gpuErrchk(cudaDeviceSynchronize());
 
     // Copy result from device memory to host memory
     unsigned char* h_pixels = (unsigned char*) malloc(vectorSize);
-    gpuErrchk(cudaMemcpy(h_pixels, d_pixels, vectorSize, cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaMemcpy(h_pixels, d_pixels_out, vectorSize, cudaMemcpyDeviceToHost));
 
     // End timer to capture the device copy-compute-copy time
     std::chrono::high_resolution_clock::time_point stopTime = c.now();
@@ -101,6 +104,7 @@ int main(int argc, char** argv)
 
     // Free device memory
     cudaFree(d_pixels);
+    cudaFree(d_pixels_out);
 
     // Begin timer to capture host processing time
     startTime = c.now();
@@ -129,7 +133,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-__global__ void processImageWithGPU(unsigned char* pixels, unsigned int* w, unsigned int* h, unsigned int* radius)
+__global__ void processImageWithGPU(unsigned char* pixels, unsigned char* pixels_out, unsigned int* w, unsigned int* h, unsigned int* radius)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int row = i / *w;
@@ -177,7 +181,7 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned int* w, unsi
         }
 
         // Change the pixel to the median value
-        pixels[i] = values[idx/2];
+        pixels_out[i] = values[idx/2];
 
         if (row == 50 && col == 50)
         {
