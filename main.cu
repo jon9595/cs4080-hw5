@@ -178,6 +178,19 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned int* w, unsi
 
         // Change the pixel to the median value
         pixels[i] = values[idx/2];
+
+        if (row == 50 && col == 50)
+        {
+            printf("GPU: ");
+
+            for (int t = 0; t < idx; t++)
+            {
+                printf("%d ", values[t]);
+            }
+
+            printf("GPU: size: %d\n", idx);
+            printf("GPU: %d\n", pixels[i]);
+        }
     }
 }
 
@@ -238,6 +251,19 @@ void processImageWithCPU(unsigned char* pixels, unsigned int w, unsigned int h, 
             std::sort(values.begin(), values.end());
             int size = (int) values.size();
             pixels[pixelIndex] = values[size / 2];
+
+            if (row == 50 && col == 50)
+            {
+                printf("CPU: ");
+
+                for (int t = 0; t < size; t++)
+                {
+                    printf("%d ", values[t]);
+                }
+
+                printf("CPU: size: %d\n", size);
+                printf("CPU: %d\n", pixels[pixelIndex]);
+            }
         }
     }
 }
