@@ -7,14 +7,17 @@
 #include "lib/helper_image.h"
 #include "cuda_runtime.h"
 
-
 // Assert macro to check for CUDA errors
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+
 inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort=true)
 {
-    if (code != cudaSuccess) {
+    if (code != cudaSuccess) 
+	{
         fprintf(stderr, "GPUassert:: %s %s %d\n", cudaGetErrorString(code), file, line);
-        if (abort) exit(code);
+        
+		if (abort) 
+			exit(code);
     }
 }
 
@@ -44,17 +47,17 @@ int main(int argc, char** argv)
 
     std::chrono::high_resolution_clock::time_point file_load_stop = c.now();
     const double file_load_time = (double)std::chrono::duration_cast<std::chrono::microseconds>(file_load_stop - file_load_start).count() / 1000000.0;
-
     std::cout << "File loaded in " << file_load_time << "s" << std::endl;
+
+	// Begin timer to capture the device copy-compute-copy time
+	std::chrono::high_resolution_clock::time_point startTime = c.now();
 
     size_t vectorSize = sizeof(unsigned char) * w * h;
 
     // Allocate vector in device memory
     unsigned char* d_pixels;
-    unsigned char* d_pixels2;
 
     gpuErrchk(cudaMalloc((void**) &d_pixels, vectorSize));
-    gpuErrchk(cudaMalloc((void**) &d_pixels2, vectorSize));
 
     // Allocate other data in device memory
     unsigned int *d_w, *d_h, *d_radius;
@@ -65,7 +68,6 @@ int main(int argc, char** argv)
 
     // Copy data from host memory to device memory
     gpuErrchk(cudaMemcpy(d_pixels, pixels, vectorSize, cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(d_pixels2, pixels, vectorSize, cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(d_w, &w, uintSize, cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(d_h, &h, uintSize, cudaMemcpyHostToDevice));
     gpuErrchk(cudaMemcpy(d_radius, &radius, uintSize, cudaMemcpyHostToDevice));
@@ -78,7 +80,7 @@ int main(int argc, char** argv)
     cudaEvent_t start;
     checkCudaErrors(cudaEventCreate(&start));
     checkCudaErrors(cudaEventRecord(start, NULL));
-    processImageWithGPU<<<blocksPerGrid, threadsPerBlock>>>(d_pixels, d_w, d_h, d_radius);
+    processImageWithGPU<<<blocksPerGrid,threadsPerBlock>>>(d_pixels, d_w, d_h, d_radius);
     gpuErrchk(cudaPeekAtLastError());
     gpuErrchk(cudaDeviceSynchronize());
 
@@ -86,25 +88,30 @@ int main(int argc, char** argv)
     unsigned char* h_pixels = (unsigned char*) malloc(vectorSize);
     gpuErrchk(cudaMemcpy(h_pixels, d_pixels, vectorSize, cudaMemcpyDeviceToHost));
 
+	// End timer to capture the device copy-compute-copy time
+	std::chrono::high_resolution_clock::time_point stopTime = c.now();
+    double time = (double) std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime).count() / 1000000.0;
+    std::cout << "Image copied to device, processed, and copied back from device in " << time << "s" << std::endl;
+
     // Record end event
     cudaEvent_t stop;
     checkCudaErrors(cudaEventCreate(&stop));
     checkCudaErrors(cudaEventRecord(stop, NULL));
     checkCudaErrors(cudaEventSynchronize(stop));
 
-
-    // Second round of image processing, using different thread size
-    processImageWithGPU<<<512, 512>>>(d_pixels2, d_w, d_h, d_radius);
-
-    unsigned char* h_pixels2 = (unsigned char*) malloc(vectorSize);
-    gpuErrchk(cudaMemcpy(h_pixels2, d_pixels, vectorSize, cudaMemcpyDeviceToHost));
-
     // Free device memory
     cudaFree(d_pixels);
-    cudaFree(d_pixels2);
+
+	// Begin timer to capture host processing time
+	startTime = c.now();
 
     // Generate golden standard version with CPU
-    //processImageWithCPU(pixels, w, h, radius);
+    processImageWithCPU(pixels, w, h, radius);
+
+	// End timer to capture host processing time
+	stopTime = c.now();
+    time = (double) std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime).count() / 1000000.0;
+    std::cout << "Image processed on CPU in " << time << "s" << std::endl;
 
     // Save buffer to PGM image file
     if (sdkSavePGM<unsigned char>(argv[3], h_pixels, w, h) != true)
@@ -113,14 +120,8 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    if (sdkSavePGM<unsigned char>("out2.pgm", h_pixels2, w, h) != true) {
-        std::cerr << "Unable to save file: out2.pgm" << std::endl;
-        exit(1);
-    }
-
     // Free host memory
     free(h_pixels);
-    free(h_pixels2);
 
     return 0;
 }
