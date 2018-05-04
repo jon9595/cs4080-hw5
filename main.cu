@@ -110,7 +110,8 @@ int main(int argc, char** argv)
     startTime = c.now();
 
     // Generate golden standard version with CPU
-    processImageWithCPU(pixels, w, h, radius);
+    unsigned char* pixels_out = (unsigned char*)malloc(sizeof(unsigned char) * vectorSize);
+    processImageWithCPU(pixels, pixels_out, w, h, radius);
 
     // End timer to capture host processing time
     stopTime = c.now();
@@ -125,7 +126,7 @@ int main(int argc, char** argv)
     }
 
     // Compare output from host vs device
-    compareOutput(pixels, h_pixels, (w * h));
+    compareOutput(pixels_out, h_pixels, (w * h));
 
     // Free host memory
     free(h_pixels);
@@ -185,7 +186,7 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned char* pixels
     }
 }
 
-void processImageWithCPU(unsigned char* pixels, unsigned int w, unsigned int h, unsigned int radius)
+void processImageWithCPU(unsigned char* pixels, unsigned char* pixels_out, unsigned int w, unsigned int h, unsigned int radius)
 {
     // Iterate through pixels
     for (int row = 0; row < w; row++) {
@@ -241,7 +242,7 @@ void processImageWithCPU(unsigned char* pixels, unsigned int w, unsigned int h, 
 
             std::sort(values.begin(), values.end());
             int size = (int) values.size();
-            pixels[pixelIndex] = values[size / 2];
+            pixels_out[pixelIndex] = values[size / 2];
         }
     }
 }
