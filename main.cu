@@ -13,11 +13,11 @@
 inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort=true)
 {
     if (code != cudaSuccess) 
-	{
+    {
         fprintf(stderr, "GPUassert:: %s %s %d\n", cudaGetErrorString(code), file, line);
         
-		if (abort) 
-			exit(code);
+        if (abort) 
+            exit(code);
     }
 }
 
@@ -49,8 +49,8 @@ int main(int argc, char** argv)
     const double file_load_time = (double)std::chrono::duration_cast<std::chrono::microseconds>(file_load_stop - file_load_start).count() / 1000000.0;
     std::cout << "File loaded in " << file_load_time << "s" << std::endl;
 
-	// Begin timer to capture the device copy-compute-copy time
-	std::chrono::high_resolution_clock::time_point startTime = c.now();
+    // Begin timer to capture the device copy-compute-copy time
+    std::chrono::high_resolution_clock::time_point startTime = c.now();
 
     size_t vectorSize = sizeof(unsigned char) * w * h;
 
@@ -88,8 +88,8 @@ int main(int argc, char** argv)
     unsigned char* h_pixels = (unsigned char*) malloc(vectorSize);
     gpuErrchk(cudaMemcpy(h_pixels, d_pixels, vectorSize, cudaMemcpyDeviceToHost));
 
-	// End timer to capture the device copy-compute-copy time
-	std::chrono::high_resolution_clock::time_point stopTime = c.now();
+    // End timer to capture the device copy-compute-copy time
+    std::chrono::high_resolution_clock::time_point stopTime = c.now();
     double time = (double) std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime).count() / 1000000.0;
     std::cout << "Image copied to device, processed, and copied back from device in " << time << "s" << std::endl;
 
@@ -102,14 +102,14 @@ int main(int argc, char** argv)
     // Free device memory
     cudaFree(d_pixels);
 
-	// Begin timer to capture host processing time
-	startTime = c.now();
+    // Begin timer to capture host processing time
+    startTime = c.now();
 
     // Generate golden standard version with CPU
     processImageWithCPU(pixels, w, h, radius);
 
-	// End timer to capture host processing time
-	stopTime = c.now();
+    // End timer to capture host processing time
+    stopTime = c.now();
     time = (double) std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime).count() / 1000000.0;
     std::cout << "Image processed on CPU in " << time << "s" << std::endl;
 
