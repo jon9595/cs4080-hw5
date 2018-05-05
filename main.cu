@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     std::chrono::high_resolution_clock::time_point startTime = c.now();
 
     size_t vectorSize = sizeof(unsigned char) * w * h;
-
+    
     unsigned char* d_pixels_out;
     gpuErrchk(cudaMalloc((void**) &d_pixels_out, vectorSize));
 
@@ -130,6 +130,7 @@ int main(int argc, char** argv)
 
     // Free host memory
     free(h_pixels);
+    free(pixels_out);
 
     return 0;
 }
@@ -139,7 +140,7 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned char* pixels
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int row = i / *w;
     int col = i % *w;
-    unsigned char values[150];
+    unsigned char values[225];
     int idx = 0;
 
     if(row > *radius && col > *radius && (*h - row) > *radius && (*w - col) > *radius) {
@@ -162,41 +163,30 @@ __global__ void processImageWithGPU(unsigned char* pixels, unsigned char* pixels
                     idx++;
 
                     if(filterCol != 0) {
-                        int filterIndexBottomRight = i + (*w + filterRow) + filterCol;
+                        int filterIndexBottomRight = i + (*w * filterRow) + filterCol;
                         values[idx] = pixels[filterIndexBottomRight];
                         idx++;
                     }
                 }
             }
         }
-
+    
         // Sort the pixels
-        for(int j = 0; j < idx - 1; j++) {
-            for(int k = 0; k < idx - j - 1; k++) {
-                if(values[k] > values[k + 1]) {
+        for (int j = 0; j < idx - 1; j++) 
+        {
+            for (int k = 0; k < idx - j - 1; k++) 
+            {
+                if (values[k] > values[k + 1]) 
+                {
                     unsigned char temp = values[k];
                     values[k] = values[k+1];
                     values[k+1] = temp;
                 }
             }
         }
-
+        
         // Change the pixel to the median value
         pixels_out[i] = values[idx/2 + 1];
-
-        if (row == 50 && col == 50)
-        {
-            printf("GPU: ");
-
-            for (int t = 0; t < idx; t++)
-            {
-                printf("%d ", values[t]);
-            }
-
-            printf("GPU: size: %d\n", idx);
-            printf("GPU: %d\n", values[idx / 2 + 1]);
-        }
-
         return;
     }
 
@@ -260,19 +250,6 @@ void processImageWithCPU(unsigned char* pixels, unsigned char* pixels_out, unsig
             std::sort(values.begin(), values.end());
             int size = (int) values.size();
             pixels_out[pixelIndex] = values[size / 2 + 1];
-
-            if (row == 50 && col == 50)
-            {
-                printf("CPU: ");
-
-                for (int t = 0; t < size; t++)
-                {
-                    printf("%d ", values[t]);
-                }
-
-                printf("CPU: size: %d\n", size);
-                printf("CPU: %d\n", values[size / 2 + 1]);
-            }
         }
     }
 }
@@ -288,12 +265,8 @@ void compareOutput(unsigned char *cpuPixels, unsigned char *gpuPixels, int size)
         {
             matchingPixels++;
         }
-        else
-        {
-//            printf("compareOutput() mismatch: i == %d\n", i);
-        }
-    }
+   }
 
     double accuracy = ((double) matchingPixels / (double) totalPixels) * 100.0;
-    std::cout << "Accuracy: " << accuracy << std::endl;
+    std::cout << "Accuracy: " << accuracy << "%" << std::endl;
 }
